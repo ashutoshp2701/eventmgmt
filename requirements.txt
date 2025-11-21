@@ -1,0 +1,5 @@
+streamlit
+python-barcode
+pillow
+pandas
+firebase-admin
