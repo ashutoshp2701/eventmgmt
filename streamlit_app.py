@@ -100,11 +100,11 @@ def generate_barcode(emp_id):
 def main():
     st.title("🎟️ Event Registration")
     
-    # Sidebar Navigation
-    menu = ["Registration", "Admin Dashboard"]
-    choice = st.sidebar.radio("Menu", menu)
+    # Sidebar Navigation with Role Selection
+    st.sidebar.title("Navigation")
+    role = st.sidebar.radio("Select Role", ["👤 Participant", "🔑 Admin"])
     
-    if choice == "Registration":
+    if role == "👤 Participant":
         st.header("User Registration")
         st.write("Please fill in your details to generate your event pass.")
         
@@ -154,37 +154,51 @@ def main():
                 st.session_state['last_emp_id'] = None
                 st.rerun()
 
-    elif choice == "Admin Dashboard":
-        st.header("📊 Admin Dashboard")
+    elif role == "🔑 Admin":
+        st.header("🔐 Admin Access")
         
-        if st.button("Refresh Data"):
-            st.rerun()
+        # Password Protection
+        password = st.text_input("Enter Admin Password", type="password")
+        
+        # Get password from secrets or use default
+        admin_pass = st.secrets.get("admin_password", "admin123")
+        
+        if password == admin_pass:
+            st.success("Access Granted")
+            st.divider()
+            st.subheader("📊 Dashboard")
             
-        total_reg, total_dl, gender_counts = get_stats()
-        
-        # Metrics
-        col1, col2 = st.columns(2)
-        col1.metric("Total Registrations", total_reg)
-        col2.metric("Barcodes Downloaded", total_dl)
-        
-        st.divider()
-        
-        # Charts
-        st.subheader("Gender Distribution")
-        if not gender_counts.empty:
-            st.bar_chart(gender_counts)
+            if st.button("Refresh Data"):
+                st.rerun()
+                
+            total_reg, total_dl, gender_counts = get_stats()
             
-            # Show raw data table
-            with st.expander("View Raw Data"):
-                # Re-fetch for table view is inefficient, but simple. 
-                # Ideally we pass the DF from get_stats, but for now this is fine.
-                # Let's just use the aggregate data we have or fetch again if needed.
-                # For simplicity, we won't show the full table here to save reads, 
-                # or we can modify get_stats to return the DF.
-                # Let's modify get_stats to be cleaner.
-                pass 
-        else:
-            st.info("No registrations yet.")
+            # Metrics
+            col1, col2 = st.columns(2)
+            col1.metric("Total Registrations", total_reg)
+            col2.metric("Barcodes Downloaded", total_dl)
+            
+            st.divider()
+            
+            # Charts
+            st.subheader("Gender Distribution")
+            if not gender_counts.empty:
+                st.bar_chart(gender_counts)
+                
+                # Show raw data table
+                with st.expander("View Raw Data"):
+                    # Fetch data for table
+                    try:
+                        docs = db.collection('registrations').stream()
+                        data = [doc.to_dict() for doc in docs]
+                        df = pd.DataFrame(data)
+                        st.dataframe(df)
+                    except Exception as e:
+                        st.error(f"Error loading table: {e}")
+            else:
+                st.info("No registrations yet.")
+        elif password:
+            st.error("Incorrect Password")
 
 if __name__ == '__main__':
     main()
